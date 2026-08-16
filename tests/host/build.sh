@@ -21,13 +21,21 @@ mkdir -p "$OUT"
 export INCLUDE="$MSVC_ROOT/include;$SDK_INC/ucrt;$SDK_INC/shared;$SDK_INC/um"
 export LIB="$MSVC_ROOT/lib/x64;$SDK_LIB/ucrt/x64;$SDK_LIB/um/x64"
 
-"$CL" \
-    /nologo /W4 /WX /wd4127 /O2 /std:c11 \
-    /I"$ROOT/include" \
-    "$ROOT/src/nhv_vmcs12.c" \
-    "$ROOT/tests/host/test_vmcs12.c" \
-    /Fe:"$OUT/test_vmcs12.exe" \
-    /Fo:"$OUT/" \
-    /link /SUBSYSTEM:CONSOLE
+# Common flags: strict warnings, no CRT exceptions expected in pure logic.
+FLAGS=(/nologo /W4 /WX /wd4127 /O2 /std:c11 /I"$ROOT/include")
 
-"$OUT/test_vmcs12.exe"
+# Each test links the library sources it exercises.
+build_and_run() {
+    local exe="$1"; shift
+    "$CL" "${FLAGS[@]}" \
+        "$ROOT/src/nhv_vmcs12.c" \
+        "$ROOT/src/nhv_vmcs02.c" \
+        "$@" \
+        "/Fe:$OUT/$exe.exe" \
+        /Fo:"$OUT/" \
+        /link /SUBSYSTEM:CONSOLE
+    "$OUT/$exe.exe"
+}
+
+build_and_run test_vmcs12 "$ROOT/tests/host/test_vmcs12.c"
+build_and_run test_vmcs02 "$ROOT/tests/host/test_vmcs02.c"
