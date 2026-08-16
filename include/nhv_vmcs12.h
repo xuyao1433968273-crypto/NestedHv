@@ -76,6 +76,11 @@ NHV_RESULT nhv_vmcs12_vmread(const NHV_VMCS12_STORE* store, uint32_t enc, uint64
 /* VMWRITE: write `value` to `enc` in the current object. */
 NHV_RESULT nhv_vmcs12_vmwrite(NHV_VMCS12_STORE* store, uint32_t enc, uint64_t value);
 
+/* L0-internal raw write: like VMWRITE but bypasses the read-only access check.
+ * The L0 uses this to synthesize a reflected VM-exit into VMCS12, writing the
+ * exit-reason/qualification fields that L1 itself may not write. */
+NHV_RESULT nhv_vmcs12_write_raw(NHV_VMCS12_STORE* store, uint32_t enc, uint64_t value);
+
 /* Launch-state transitions (used by VMLAUNCH/VMRESUME emulation). */
 NHV_RESULT nhv_vmcs12_begin_launch(NHV_VMCS12_STORE* store);
 NHV_RESULT nhv_vmcs12_begin_resume(NHV_VMCS12_STORE* store);

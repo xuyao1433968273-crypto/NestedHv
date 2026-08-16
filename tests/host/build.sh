@@ -30,6 +30,7 @@ build_and_run() {
     "$CL" "${FLAGS[@]}" \
         "$ROOT/src/nhv_vmcs12.c" \
         "$ROOT/src/nhv_vmcs02.c" \
+        "$ROOT/src/nhv_exit.c" \
         "$@" \
         "/Fe:$OUT/$exe.exe" \
         /Fo:"$OUT/" \
@@ -39,3 +40,4 @@ build_and_run() {
 
 build_and_run test_vmcs12 "$ROOT/tests/host/test_vmcs12.c"
 build_and_run test_vmcs02 "$ROOT/tests/host/test_vmcs02.c"
+build_and_run test_exit  "$ROOT/tests/host/test_exit.c"

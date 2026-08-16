@@ -289,7 +289,9 @@ NHV_RESULT nhv_vmcs12_vmread(const NHV_VMCS12_STORE* store, uint32_t enc, uint64
     return nhv_result(NHV_OK, 0);
 }
 
-NHV_RESULT nhv_vmcs12_vmwrite(NHV_VMCS12_STORE* store, uint32_t enc, uint64_t value)
+static NHV_RESULT nhv_vmcs12_write_impl(NHV_VMCS12_STORE* store,
+                                       uint32_t enc, uint64_t value,
+                                       int allow_ro)
 {
     const NHV_FIELD_DESC* desc;
     NHV_VMCS12_OBJECT* obj;
@@ -302,7 +304,7 @@ NHV_RESULT nhv_vmcs12_vmwrite(NHV_VMCS12_STORE* store, uint32_t enc, uint64_t va
     if (desc == 0) {
         return nhv_result(NHV_VMFAIL_INVALID, 0);
     }
-    if (desc->access == NHV_ACCESS_RO) {
+    if (!allow_ro && desc->access == NHV_ACCESS_RO) {
         return nhv_result(NHV_VMFAIL_VALID, NHV_VMERR_WRITE_TO_READONLY);
     }
     obj = nhv_vmcs12_current_mut(store);
@@ -322,6 +324,16 @@ NHV_RESULT nhv_vmcs12_vmwrite(NHV_VMCS12_STORE* store, uint32_t enc, uint64_t va
     slot->value = value;
     slot->present = 1;
     return nhv_result(NHV_OK, 0);
+}
+
+NHV_RESULT nhv_vmcs12_vmwrite(NHV_VMCS12_STORE* store, uint32_t enc, uint64_t value)
+{
+    return nhv_vmcs12_write_impl(store, enc, value, 0);
+}
+
+NHV_RESULT nhv_vmcs12_write_raw(NHV_VMCS12_STORE* store, uint32_t enc, uint64_t value)
+{
+    return nhv_vmcs12_write_impl(store, enc, value, 1);
 }
 
 uint32_t nhv_vmcs12_launch_state(const NHV_VMCS12_STORE* store)

@@ -31,8 +31,8 @@ tests/host/  host tests that compile and run on a normal machine
 - [x] VMCS field encoding scheme + field table
 - [x] VMCS12 shadow object (VMPTRLD/VMREAD/VMWRITE/VMCLEAR semantics)
 - [x] VMCS02 build/merge (control merge + validation, guest-state copy, L0 host state)
+- [x] exit classification and reflection (reflect vs L0-owned vs unsupported)
 - [ ] VMX instruction wrappers (asm)
-- [ ] exit classification and reflection
 - [ ] minimal L1 -> L2 demo
 
 ## License
