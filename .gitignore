@@ -1,0 +1,17 @@
+# build artifacts
+out/
+*.obj
+*.sys
+*.exe
+*.dll
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.cat
+*.map
+
+# Visual Studio
+.vs/
+*.user
+*.suo
