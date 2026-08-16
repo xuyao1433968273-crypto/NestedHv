@@ -124,21 +124,52 @@ typedef struct NHV_EXIT_INFO {
 NHV_EXIT_DISPOSITION nhv_exit_classify(const NHV_EXIT_INFO* info,
                                        const NHV_L1_CONTROLS* l1);
 
-/* What L0 writes into VMCS12 when it reflects an exit to L1. */
-typedef struct NHV_REFLECT_INFO {
+/*
+ * Full VM-exit snapshot L0 writes into VMCS12 when it reflects an exit to L1.
+ * Mirrors the reference L0 implementations: the exit-information fields plus
+ * the complete guest-state area of L2 at the moment of the exit. L1's handler
+ * VMREADs any of these and expects the real L2 state, not a partial one.
+ */
+typedef struct NHV_EXIT_SNAPSHOT {
+    /* Exit-information fields. */
     uint32_t exit_reason;
-    uint32_t qualification;
-    uint64_t guest_rip;
-    uint64_t guest_rsp;
-    uint64_t guest_rflags;
-} NHV_REFLECT_INFO;
+    uint32_t exit_qualification;
+    uint32_t exit_interruption_info;
+    uint32_t exit_interruption_error;
+    uint32_t exit_instruction_length;
+    uint32_t idt_vectoring_info;
+    uint32_t idt_vectoring_error;
+    uint32_t vm_instruction_error;
+    uint32_t vmx_instruction_info;
+    uint64_t guest_linear_address;
+    uint64_t guest_physical_address;
+
+    /* Guest (L2) state at exit. */
+    uint64_t guest_rip, guest_rsp, guest_rflags;
+    uint64_t guest_cr0, guest_cr3, guest_cr4, guest_dr7, guest_efer;
+    uint16_t guest_es_sel, guest_cs_sel, guest_ss_sel, guest_ds_sel;
+    uint16_t guest_fs_sel, guest_gs_sel, guest_ldtr_sel, guest_tr_sel;
+    uint32_t guest_es_limit, guest_cs_limit, guest_ss_limit, guest_ds_limit;
+    uint32_t guest_fs_limit, guest_gs_limit, guest_ldtr_limit, guest_tr_limit;
+    uint32_t guest_gdtr_limit, guest_idtr_limit;
+    uint32_t guest_es_ar, guest_cs_ar, guest_ss_ar, guest_ds_ar;
+    uint32_t guest_fs_ar, guest_gs_ar, guest_ldtr_ar, guest_tr_ar;
+    uint64_t guest_es_base, guest_cs_base, guest_ss_base, guest_ds_base;
+    uint64_t guest_fs_base, guest_gs_base, guest_ldtr_base, guest_tr_base;
+    uint64_t guest_gdtr_base, guest_idtr_base;
+    uint32_t guest_interruptibility, guest_activity_state;
+    uint32_t guest_sysenter_cs;
+    uint64_t guest_sysenter_esp, guest_sysenter_eip;
+    uint64_t guest_pending_dbg_exc;
+} NHV_EXIT_SNAPSHOT;
 
 /*
- * Synthesize a reflected VM-exit into the current VMCS12: writes the exit
- * reason/qualification and a snapshot of L2's RIP/RSP/RFLAGS.
+ * Synthesize a reflected VM-exit into the current VMCS12: writes the full exit
+ * snapshot (exit-information fields + L2 guest state) so L1's handler sees the
+ * real L2 state on VMREAD.
  *
  * Returns NHV_OK on success, NHV_VMFAIL_INVALID when there is no current VMCS.
  */
-NHV_RESULT nhv_exit_reflect(NHV_VMCS12_STORE* store, const NHV_REFLECT_INFO* info);
+NHV_RESULT nhv_exit_reflect(NHV_VMCS12_STORE* store, const NHV_EXIT_SNAPSHOT* snap);
 
 #endif /* NHV_EXIT_H */

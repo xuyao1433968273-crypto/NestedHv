@@ -260,10 +260,77 @@ static void test_unsupported(void)
     CHECK(nhv_exit_classify(&e, &l1) == NHV_EXIT_UNSUPPORTED);
 }
 
-static void test_reflect_writes_vmcs12(void)
+static NHV_EXIT_SNAPSHOT filled_snapshot(void)
+{
+    NHV_EXIT_SNAPSHOT s;
+    s.exit_reason = NHV_EXIT_HLT;
+    s.exit_qualification = 0x1001u;
+    s.exit_interruption_info = 0x1002u;
+    s.exit_interruption_error = 0x1003u;
+    s.exit_instruction_length = 0x1004u;
+    s.idt_vectoring_info = 0x1005u;
+    s.idt_vectoring_error = 0x1006u;
+    s.vm_instruction_error = 0x1007u;
+    s.vmx_instruction_info = 0x1008u;
+    s.guest_linear_address = 0x1009ull;
+    s.guest_physical_address = 0x100Aull;
+    s.guest_rip = 0x1011ull;
+    s.guest_rsp = 0x1012ull;
+    s.guest_rflags = 0x1013ull;
+    s.guest_cr0 = 0x1014ull;
+    s.guest_cr3 = 0x1015ull;
+    s.guest_cr4 = 0x1016ull;
+    s.guest_dr7 = 0x1017ull;
+    s.guest_efer = 0x1018ull;
+    s.guest_es_sel = 0x21u;
+    s.guest_cs_sel = 0x22u;
+    s.guest_ss_sel = 0x23u;
+    s.guest_ds_sel = 0x24u;
+    s.guest_fs_sel = 0x25u;
+    s.guest_gs_sel = 0x26u;
+    s.guest_ldtr_sel = 0x27u;
+    s.guest_tr_sel = 0x28u;
+    s.guest_es_limit = 0x31u;
+    s.guest_cs_limit = 0x32u;
+    s.guest_ss_limit = 0x33u;
+    s.guest_ds_limit = 0x34u;
+    s.guest_fs_limit = 0x35u;
+    s.guest_gs_limit = 0x36u;
+    s.guest_ldtr_limit = 0x37u;
+    s.guest_tr_limit = 0x38u;
+    s.guest_gdtr_limit = 0x39u;
+    s.guest_idtr_limit = 0x3Au;
+    s.guest_es_ar = 0x41u;
+    s.guest_cs_ar = 0x42u;
+    s.guest_ss_ar = 0x43u;
+    s.guest_ds_ar = 0x44u;
+    s.guest_fs_ar = 0x45u;
+    s.guest_gs_ar = 0x46u;
+    s.guest_ldtr_ar = 0x47u;
+    s.guest_tr_ar = 0x48u;
+    s.guest_es_base = 0x51ull;
+    s.guest_cs_base = 0x52ull;
+    s.guest_ss_base = 0x53ull;
+    s.guest_ds_base = 0x54ull;
+    s.guest_fs_base = 0x55ull;
+    s.guest_gs_base = 0x56ull;
+    s.guest_ldtr_base = 0x57ull;
+    s.guest_tr_base = 0x58ull;
+    s.guest_gdtr_base = 0x59ull;
+    s.guest_idtr_base = 0x5Aull;
+    s.guest_interruptibility = 0x61u;
+    s.guest_activity_state = 0x62u;
+    s.guest_sysenter_cs = 0x63u;
+    s.guest_sysenter_esp = 0x64ull;
+    s.guest_sysenter_eip = 0x65ull;
+    s.guest_pending_dbg_exc = 0x66ull;
+    return s;
+}
+
+static void test_reflect_writes_full_snapshot(void)
 {
     NHV_VMCS12_STORE store;
-    NHV_REFLECT_INFO r;
+    NHV_EXIT_SNAPSHOT s = filled_snapshot();
     NHV_RESULT res;
     uint64_t v = 0;
 
@@ -271,48 +338,90 @@ static void test_reflect_writes_vmcs12(void)
     res = nhv_vmcs12_vmptrld(&store, 0x1000ull);
     CHECK(res.kind == NHV_OK);
 
-    r.exit_reason = NHV_EXIT_HLT;
-    r.qualification = 0x1234u;
-    r.guest_rip = 0x1111ull;
-    r.guest_rsp = 0x2222ull;
-    r.guest_rflags = 0x3333ull;
-
-    res = nhv_exit_reflect(&store, &r);
+    res = nhv_exit_reflect(&store, &s);
     CHECK(res.kind == NHV_OK);
 
+    /* Exit-information fields. */
     res = nhv_vmcs12_vmread(&store, NHV_EXIT_REASON, &v);
-    CHECK(res.kind == NHV_OK);
-    CHECK(v == NHV_EXIT_HLT);
-
+    CHECK(res.kind == NHV_OK && v == s.exit_reason);
     res = nhv_vmcs12_vmread(&store, NHV_EXIT_QUALIFICATION, &v);
-    CHECK(res.kind == NHV_OK);
-    CHECK(v == 0x1234ull);
+    CHECK(res.kind == NHV_OK && v == s.exit_qualification);
+    res = nhv_vmcs12_vmread(&store, NHV_EXIT_INTERRUPTION_INFO, &v);
+    CHECK(res.kind == NHV_OK && v == s.exit_interruption_info);
+    res = nhv_vmcs12_vmread(&store, NHV_EXIT_INTERRUPTION_ERROR, &v);
+    CHECK(res.kind == NHV_OK && v == s.exit_interruption_error);
+    res = nhv_vmcs12_vmread(&store, NHV_EXIT_INSTRUCTION_LENGTH, &v);
+    CHECK(res.kind == NHV_OK && v == s.exit_instruction_length);
+    res = nhv_vmcs12_vmread(&store, NHV_IDT_VECTORING_INFO, &v);
+    CHECK(res.kind == NHV_OK && v == s.idt_vectoring_info);
+    res = nhv_vmcs12_vmread(&store, NHV_IDT_VECTORING_ERROR, &v);
+    CHECK(res.kind == NHV_OK && v == s.idt_vectoring_error);
+    res = nhv_vmcs12_vmread(&store, NHV_VM_INSTRUCTION_ERROR, &v);
+    CHECK(res.kind == NHV_OK && v == s.vm_instruction_error);
+    res = nhv_vmcs12_vmread(&store, NHV_EXIT_INSTRUCTION_INFO, &v);
+    CHECK(res.kind == NHV_OK && v == s.vmx_instruction_info);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_LINEAR_ADDRESS, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_linear_address);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_PHYSICAL_ADDRESS, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_physical_address);
 
+    /* Guest state. */
     res = nhv_vmcs12_vmread(&store, NHV_GUEST_RIP, &v);
-    CHECK(res.kind == NHV_OK);
-    CHECK(v == 0x1111ull);
-
+    CHECK(res.kind == NHV_OK && v == s.guest_rip);
     res = nhv_vmcs12_vmread(&store, NHV_GUEST_RSP, &v);
-    CHECK(res.kind == NHV_OK);
-    CHECK(v == 0x2222ull);
-
+    CHECK(res.kind == NHV_OK && v == s.guest_rsp);
     res = nhv_vmcs12_vmread(&store, NHV_GUEST_RFLAGS, &v);
-    CHECK(res.kind == NHV_OK);
-    CHECK(v == 0x3333ull);
+    CHECK(res.kind == NHV_OK && v == s.guest_rflags);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_CR0, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_cr0);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_CR3, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_cr3);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_CR4, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_cr4);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_DR7, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_dr7);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_IA32_EFER, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_efer);
+
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_CS_SELECTOR, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_cs_sel);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_SS_SELECTOR, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_ss_sel);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_TR_SELECTOR, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_tr_sel);
+
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_CS_LIMIT, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_cs_limit);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_GDTR_LIMIT, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_gdtr_limit);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_CS_ACCESS, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_cs_ar);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_TR_ACCESS, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_tr_ar);
+
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_CS_BASE, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_cs_base);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_IDTR_BASE, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_idtr_base);
+
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_INTERRUPTIBILITY, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_interruptibility);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_ACTIVITY_STATE, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_activity_state);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_SYSENTER_EIP, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_sysenter_eip);
+    res = nhv_vmcs12_vmread(&store, NHV_GUEST_PENDING_DBG_EXC, &v);
+    CHECK(res.kind == NHV_OK && v == s.guest_pending_dbg_exc);
 }
 
 static void test_reflect_no_current_fails(void)
 {
     NHV_VMCS12_STORE store;
-    NHV_REFLECT_INFO r;
+    NHV_EXIT_SNAPSHOT s = filled_snapshot();
     NHV_RESULT res;
 
     nhv_vmcs12_store_init(&store);
-    r.exit_reason = NHV_EXIT_HLT;
-    r.qualification = 0;
-    r.guest_rip = r.guest_rsp = r.guest_rflags = 0;
-
-    res = nhv_exit_reflect(&store, &r);
+    res = nhv_exit_reflect(&store, &s);
     CHECK(res.kind == NHV_VMFAIL_INVALID);
 }
 
@@ -341,7 +450,7 @@ int main(void)
     test_cr_access();
     test_secondary_controls();
     test_unsupported();
-    test_reflect_writes_vmcs12();
+    test_reflect_writes_full_snapshot();
     test_reflect_no_current_fails();
     test_l1_still_cannot_write_exit_reason();
 

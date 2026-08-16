@@ -169,33 +169,145 @@ NHV_EXIT_DISPOSITION nhv_exit_classify(const NHV_EXIT_INFO* info,
     }
 }
 
-NHV_RESULT nhv_exit_reflect(NHV_VMCS12_STORE* store, const NHV_REFLECT_INFO* info)
+NHV_RESULT nhv_exit_reflect(NHV_VMCS12_STORE* store, const NHV_EXIT_SNAPSHOT* snap)
 {
     NHV_RESULT r;
 
-    if (store == 0 || info == 0) {
+    if (store == 0 || snap == 0) {
         NHV_RESULT bad;
         bad.kind = NHV_VMFAIL_INVALID;
         bad.vm_instr_error = 0;
         return bad;
     }
 
-    r = nhv_vmcs12_write_raw(store, NHV_EXIT_REASON, info->exit_reason);
-    if (r.kind != NHV_OK) {
-        return r;
-    }
-    r = nhv_vmcs12_write_raw(store, NHV_EXIT_QUALIFICATION, info->qualification);
-    if (r.kind != NHV_OK) {
-        return r;
-    }
-    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_RIP, info->guest_rip);
-    if (r.kind != NHV_OK) {
-        return r;
-    }
-    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_RSP, info->guest_rsp);
-    if (r.kind != NHV_OK) {
-        return r;
-    }
-    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_RFLAGS, info->guest_rflags);
+    /* Phase 1: exit-information fields (read-only to L1, so raw write). */
+    r = nhv_vmcs12_write_raw(store, NHV_EXIT_REASON, snap->exit_reason);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_write_raw(store, NHV_EXIT_QUALIFICATION, snap->exit_qualification);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_write_raw(store, NHV_EXIT_INTERRUPTION_INFO, snap->exit_interruption_info);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_write_raw(store, NHV_EXIT_INTERRUPTION_ERROR, snap->exit_interruption_error);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_write_raw(store, NHV_EXIT_INSTRUCTION_LENGTH, snap->exit_instruction_length);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_write_raw(store, NHV_IDT_VECTORING_INFO, snap->idt_vectoring_info);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_write_raw(store, NHV_IDT_VECTORING_ERROR, snap->idt_vectoring_error);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_write_raw(store, NHV_VM_INSTRUCTION_ERROR, snap->vm_instruction_error);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_write_raw(store, NHV_EXIT_INSTRUCTION_INFO, snap->vmx_instruction_info);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_write_raw(store, NHV_GUEST_LINEAR_ADDRESS, snap->guest_linear_address);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_write_raw(store, NHV_GUEST_PHYSICAL_ADDRESS, snap->guest_physical_address);
+    if (r.kind != NHV_OK) return r;
+
+    /* Phase 2: full guest (L2) state. */
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_RIP, snap->guest_rip);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_RSP, snap->guest_rsp);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_RFLAGS, snap->guest_rflags);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_CR0, snap->guest_cr0);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_CR3, snap->guest_cr3);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_CR4, snap->guest_cr4);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_DR7, snap->guest_dr7);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_IA32_EFER, snap->guest_efer);
+    if (r.kind != NHV_OK) return r;
+
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_ES_SELECTOR, snap->guest_es_sel);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_CS_SELECTOR, snap->guest_cs_sel);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_SS_SELECTOR, snap->guest_ss_sel);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_DS_SELECTOR, snap->guest_ds_sel);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_FS_SELECTOR, snap->guest_fs_sel);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_GS_SELECTOR, snap->guest_gs_sel);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_LDTR_SELECTOR, snap->guest_ldtr_sel);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_TR_SELECTOR, snap->guest_tr_sel);
+    if (r.kind != NHV_OK) return r;
+
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_ES_LIMIT, snap->guest_es_limit);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_CS_LIMIT, snap->guest_cs_limit);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_SS_LIMIT, snap->guest_ss_limit);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_DS_LIMIT, snap->guest_ds_limit);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_FS_LIMIT, snap->guest_fs_limit);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_GS_LIMIT, snap->guest_gs_limit);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_LDTR_LIMIT, snap->guest_ldtr_limit);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_TR_LIMIT, snap->guest_tr_limit);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_GDTR_LIMIT, snap->guest_gdtr_limit);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_IDTR_LIMIT, snap->guest_idtr_limit);
+    if (r.kind != NHV_OK) return r;
+
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_ES_ACCESS, snap->guest_es_ar);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_CS_ACCESS, snap->guest_cs_ar);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_SS_ACCESS, snap->guest_ss_ar);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_DS_ACCESS, snap->guest_ds_ar);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_FS_ACCESS, snap->guest_fs_ar);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_GS_ACCESS, snap->guest_gs_ar);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_LDTR_ACCESS, snap->guest_ldtr_ar);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_TR_ACCESS, snap->guest_tr_ar);
+    if (r.kind != NHV_OK) return r;
+
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_ES_BASE, snap->guest_es_base);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_CS_BASE, snap->guest_cs_base);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_SS_BASE, snap->guest_ss_base);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_DS_BASE, snap->guest_ds_base);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_FS_BASE, snap->guest_fs_base);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_GS_BASE, snap->guest_gs_base);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_LDTR_BASE, snap->guest_ldtr_base);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_TR_BASE, snap->guest_tr_base);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_GDTR_BASE, snap->guest_gdtr_base);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_IDTR_BASE, snap->guest_idtr_base);
+    if (r.kind != NHV_OK) return r;
+
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_INTERRUPTIBILITY, snap->guest_interruptibility);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_ACTIVITY_STATE, snap->guest_activity_state);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_SYSENTER_CS, snap->guest_sysenter_cs);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_SYSENTER_ESP, snap->guest_sysenter_esp);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_SYSENTER_EIP, snap->guest_sysenter_eip);
+    if (r.kind != NHV_OK) return r;
+    r = nhv_vmcs12_vmwrite(store, NHV_GUEST_PENDING_DBG_EXC, snap->guest_pending_dbg_exc);
     return r;
 }
